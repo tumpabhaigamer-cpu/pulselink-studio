@@ -1,0 +1,9 @@
+import { getDashboardData } from "@/lib/store";
+import { PulseWidgetSchema } from "@/lib/widget-schema";
+
+export async function GET() {
+  try {
+    const data = await getDashboardData();
+    return Response.json({ version: "1.0.0", profile: { id: data.profile.id, username: data.profile.username, displayName: data.profile.displayName, bio: data.profile.bio, avatarUrl: data.profile.avatarUrl, coverUrl: data.profile.coverUrl, tier: data.profile.tier, shopEnabled: data.profile.shopEnabled, socialLinks: data.profile.socialLinks, mode: data.profile.themeConfig.layoutMode ?? "EASY_OS", theme: data.profile.themeConfig }, grid: { desktopColumns: 2, mobileColumns: 1, snap: true }, widgets: data.links.map((link) => { const parsed = PulseWidgetSchema.safeParse(link.contextPayload.pulseWidget); return { id: link.id, type: link.type, title: link.title, url: link.url, thumbnailUrl: link.thumbnailUrl, parentId: link.parentId, position: link.position, layout: { size: link.layoutSize === "FEATURED" ? "FEATURED" : "STANDARD" }, enabled: link.isActive, archived: link.isArchived, animation: link.animation ?? "NONE", schedule: { start: link.scheduleStart, end: link.scheduleEnd }, gates: { codeLock: { enabled: !!link.lockConfig.codeLock?.enabled, hasPasscode: !!link.lockConfig.codeLock?.hasPasscode }, ageLock: { enabled: !!link.lockConfig.ageLock?.enabled, minAge: link.lockConfig.ageLock?.minAge ?? 18 }, subscribeLock: { enabled: !!link.lockConfig.subscribeLock?.enabled, collectEmail: link.lockConfig.subscribeLock?.collectEmail ?? true }, sensitiveWarning: { enabled: !!link.lockConfig.sensitiveWarning?.enabled } }, config: parsed.success && parsed.data.type === link.type ? parsed.data : null, legacyContext: parsed.success && parsed.data.type === link.type ? null : link.contextPayload }; }) }, { headers: { "Cache-Control": "no-store" } });
+  } catch { return Response.json({ error: "Workspace session required." }, { status: 401 }); }
+}

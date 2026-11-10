@@ -1,0 +1,13 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { Check, Code2, Copy, Download, X } from "lucide-react";
+
+export function StateInspector({ onClose }: { onClose: () => void }) {
+  const [tab, setTab] = useState<"state" | "schema">("state"); const [state, setState] = useState<unknown>(null); const [schema, setSchema] = useState<unknown>(null); const [error, setError] = useState(""); const [copied, setCopied] = useState(false);
+  useEffect(() => { Promise.all([fetch("/api/studio/state").then((r) => { if (!r.ok) throw new Error("Couldn’t load state."); return r.json(); }), fetch("/api/widgets/schema").then((r) => { if (!r.ok) throw new Error("Couldn’t load schema."); return r.json(); })]).then(([page, contract]) => { setState(page); setSchema(contract); }).catch((err) => setError(err instanceof Error ? err.message : "Couldn’t load JSON.")); }, []);
+  const text = JSON.stringify(tab === "state" ? state : schema, null, 2);
+  async function copy() { try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1800); } catch { setError("Clipboard unavailable. Select the JSON to copy it."); } }
+  function download() { const url = URL.createObjectURL(new Blob([text], { type: "application/json" })); const anchor = document.createElement("a"); anchor.href = url; anchor.download = tab === "state" ? "pulselink-page-state.json" : "pulselink-widget-schema.json"; anchor.click(); URL.revokeObjectURL(url); }
+  return <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><div className="pulse-builder-modal state-inspector" role="dialog" aria-modal="true" aria-label="JSON inspector"><button className="pulse-builder-close" onClick={onClose} aria-label="Close"><X size={19} /></button><span className="builder-eyebrow"><Code2 size={13} /> BUILT FOR BUILDERS / V1.0</span><h2>Your page, <em>under the hood.</em></h2><p>One versioned state object. Five reusable component contracts.</p><div className="inspector-toolbar"><div><button className={tab === "state" ? "active" : ""} onClick={() => setTab("state")}>Page state</button><button className={tab === "schema" ? "active" : ""} onClick={() => setTab("schema")}>Widget schema</button></div><span><button onClick={copy}>{copied ? <Check size={14} /> : <Copy size={14} />} {copied ? "Copied" : "Copy"}</button><button onClick={download}><Download size={14} /> Download</button></span></div>{error && <div className="builder-error">{error}</div>}<pre className="inspector-code">{text ?? "Loading..."}</pre><div className="inspector-foot"><span>JSON SCHEMA / DRAFT 2020-12</span><a href="/api/widgets/schema" target="_blank" rel="noreferrer">Open schema endpoint ↗</a></div></div></div>;
+}
